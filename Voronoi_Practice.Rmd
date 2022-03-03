@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(ggvoronoi)
 library(tidyverse)
+library(lubridate)
 set.seed(45056)
 x <- sample(1:200,100)
 y <- sample(1:200,100)
@@ -37,16 +38,22 @@ library(ggmap)
 ```
 
 ```{r}
-data <- read_csv(here::here('Uber-dataset','uber-raw-data-apr14.csv.zip'))
-data <- select(data, Lat, Lon) %>% 
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-apr14.csv.zip'))
+df <- df %>% 
+  filter(mday(parse_date_time(`Date/Time`,"mdy_hms"))==1) %>% 
+  select(Lat, Lon) %>% 
   distinct()
-data
-#ggplot(data) +
-#  xlim(-74.1,-73.9)+ylim(40.6,40.8)+
+df
+df <- data.frame(df)
+ggplot(df) +
+#  xlim=c(-75,-72)+ylim=c(40,42)+
 #  scale_x_continuous(limits = c(-74.1, -73.9))+
 #  scale_y_continuous(limits = c(40.6, 40.8))+
-#   geom_voronoi(aes(x='lon',y='lat'))
-ggplot(data, aes(x='lon',y='lat'))+
-  geom_point()
+   geom_point(aes(x='lon',y='lat'))
+# ggplot(data, aes(x='lon',y='lat'))+
+#   geom_voronoi()
+
+vpoly <- voronoi_polygon(df,x="Lon",y="Lat")
+geom_path(data=fortify_voronoi(vpoly),aes(Lat,Lon))
 ```
 
