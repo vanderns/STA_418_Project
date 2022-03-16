@@ -24,7 +24,7 @@ ggplot(points) +
 
 ```{r}
 # library(ggmap)
-# api <- "AIzaSyBcAZIuFlbUHO-nN5o2Fdo2txkNnbiUHbA"
+# api <- ""
 # register_google(key=api)
 # oxford_map <- get_googlemap(center = c(-84.7398373,39.507306),zoom = 15,key=api)
 # bounds <- as.numeric(attr(oxford_map,"bb"))
@@ -66,7 +66,13 @@ df <- read_csv(here::here('Uber-dataset','uber-raw-data-Jan22.csv')) %>%
 #  mutate(hourtime=hour(`Date/Time`))
 #  mutate(day=mday(parse_date_time(`Date/Time`,'%m/%d/%Y %I:%M:%S %p')))
   mutate(d=parse_date_time(`Date/Time`,"%m/%d/%Y %H:%M")) %>% 
-  filter(mday(d)==1&hour(d)==0)
+  filter(mday(d)==1&hour(d)==0&Base=="B02512") %>% 
+  select(Lat, Lon) %>% 
+  distinct()
 df
+ggplot(df)+
+  geom_point(aes(x='lon',y='lat'))
+ggplot(data=df, aes(x='lon',y='lat'))+
+  geom_voronoi()
 ```
 
