@@ -23,8 +23,10 @@ ggplot(points) +
 ```
 
 ```{r}
-library(ggmap)
-# oxford_map <- get_googlemap(center = c(-84.7398373,39.507306),zoom = 15,key="your_api_key")
+# library(ggmap)
+# api <- "AIzaSyBcAZIuFlbUHO-nN5o2Fdo2txkNnbiUHbA"
+# register_google(key=api)
+# oxford_map <- get_googlemap(center = c(-84.7398373,39.507306),zoom = 15,key=api)
 # bounds <- as.numeric(attr(oxford_map,"bb"))
 # map <-
 #   ggmap(oxford_map,base_layer = ggplot(data=oxford_bikes,aes(x,y))) +
@@ -38,22 +40,33 @@ library(ggmap)
 ```
 
 ```{r}
-df <- read_csv(here::here('Uber-dataset','uber-raw-data-apr14.csv.zip'))
-df <- df %>% 
-  filter(mday(parse_date_time(`Date/Time`,"mdy_hms"))==1) %>% 
-  select(Lat, Lon) %>% 
-  distinct()
-df
-df <- data.frame(df)
-ggplot(df) +
+# df <- read_csv(here::here('Uber-dataset','uber-raw-data-apr14.csv.zip'))
+# df <- df %>% 
+#   filter(mday(parse_date_time(`Date/Time`,"mdy_hms"))==1) %>% 
+#   select(Lat, Lon) %>% 
+#   distinct()
+# df
+# df <- data.frame(df)
+# ggplot(df) +
 #  xlim=c(-75,-72)+ylim=c(40,42)+
 #  scale_x_continuous(limits = c(-74.1, -73.9))+
 #  scale_y_continuous(limits = c(40.6, 40.8))+
-   geom_point(aes(x='lon',y='lat'))
+#    geom_point(aes(x='lon',y='lat'))
 # ggplot(data, aes(x='lon',y='lat'))+
 #   geom_voronoi()
 
-vpoly <- voronoi_polygon(df,x="Lon",y="Lat")
-geom_path(data=fortify_voronoi(vpoly),aes(Lat,Lon))
+# vpoly <- voronoi_polygon(df,x="Lon",y="Lat")
+# geom_path(data=fortify_voronoi(vpoly),aes(Lat,Lon))
+```
+
+```{r}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Jan22.csv')) %>% 
+#  filter(mday(mdy_hms(`Date/Time`))==1) 
+#  filter(hour(parse_date_time(`Date/Time`,"mdy_hms"))==0)
+#  mutate(hourtime=hour(`Date/Time`))
+#  mutate(day=mday(parse_date_time(`Date/Time`,'%m/%d/%Y %I:%M:%S %p')))
+  mutate(d=parse_date_time(`Date/Time`,"%m/%d/%Y %H:%M")) %>% 
+  filter(mday(d)==1&hour(d)==0)
+df
 ```
 
