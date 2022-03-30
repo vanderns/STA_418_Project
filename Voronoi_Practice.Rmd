@@ -79,7 +79,7 @@ ggplot(data=df, aes(x='lon',y='lat'))+
 ```{r}
 set.seed(45056)
 df <- read_csv(here::here('Uber-dataset','uber-raw-data-Jan22.csv')) %>% 
-  slice_sample(n=25) %>% 
+  slice_sample(n=5) %>% 
   distinct()
 df
 #purrr::map
@@ -117,10 +117,11 @@ library(ggmap)
 
 ```{r}
 generate_voronoi <- function(df,points){
-  df <- slice_sample(df, n=25) %>% 
+  df <- slice_sample(df, n=points) %>% 
     distinct()
   map + geom_path(stat="voronoi",alpha=.6) +
        geom_point(color="red",alpha=.6)
 }
+tiles
 ```
 
