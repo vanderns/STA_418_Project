@@ -1,0 +1,216 @@
+---
+title: "Project Overview"
+author: "Nathan and Manikumar"
+date: "4/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The packages we will use are included below:
+
+```{r packages, message=FALSE}
+library(tidyverse)
+library(ggvoronoi)
+library(deldir)
+library(ggmap)
+library(sp)
+```
+
+The `ggvoronoi` and `deldir` packages are what we will use to create the Voronoi diagrams. The other three packages will be used to plot the diagrams.
+
+For our project we created numerous functions to create our diagrams and plot them.
+
+```{r}
+get_coords <- function(x_vals,y_vals){
+  xs <- c()
+  ys <- c()
+  for (i in seq_along(x_vals)){
+    for (j in seq_along(unlist(x_vals[i]))){
+      xs <- append(xs,unlist(x_vals[i])[j])
+      ys <- append(ys,unlist(y_vals[i])[j])
+    }
+  }
+  return(c((max(xs)+min(xs))/2,(max(ys)+min(ys))/2,max(xs),min(xs),max(ys),min(ys)))
+}
+
+gen_map <- function(coords){
+  return(get_map(location=coords[1:2],maptype='roadmap'))
+}
+
+generate_voronoi <- function(df){
+  df <- df %>% 
+    distinct()
+  nymap <- gen_map(coords)
+  ggmap(nymap)+
+    xlim(coords[4],coords[3])+ylim(coords[6],coords[5])+
+    geom_path(data=df, aes(x=Lon,y=Lat), stat="voronoi", alpha=.6) +
+    geom_point(data=df, aes(x=Lon,y=Lat), color="red", alpha=.6)
+}
+```
+
+Our first function, `generate_voronoi` will plot a random sample of points into a Voronoi diagram on our map. We used `ggmap` and a Google API key to obtain the map
+
+```{r}
+get_area <- function(df){
+  areas <- deldir(df$Lon,df$Lat)$summary$dir.area
+  return(areas)
+}
+```
+
+The function `get_area` will return the areas of the Voronoi polygons so that we can compare them.
+
+```{r}
+evparse <- function(x){
+  eval(parse(text = paste0(x)))
+}
+
+get_poly_x <- function(df){
+  tiles <- deldir(df$Lon, df$Lat) %>% 
+    tile.list
+  len <- seq_along(tiles)
+  temp_vec <- paste0("tiles$pt.", len, "$x")
+  return(map(temp_vec, evparse))
+}
+
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+tile$pt.1$pt
+get_poly_x(data)
+
+get_poly_y <- function(df){
+  tiles <- deldir(df$Lon, df$Lat) %>% 
+    tile.list
+  len <- seq_along(tiles)
+  temp_vec <- paste0("tiles$pt.", len, "$y")
+  return(map(temp_vec, evparse))
+} 
+```
+
+These functions are used to easily access coordinates used to make Voronoi polygons
+
+```{r}
+find_pt <- function(xvals,yvals,df){
+  ex <- data.frame()
+  for (i in seq_along(xvals)){
+    frame=data.frame(I(list(xvals[i])),I(list(yvals[i])))
+    names(frame) = c("x_vals","y_vals")
+    ex <- rbind(ex, frame)
+  }
+  ex <- mutate(ex,count=0)
+  for (i in seq_along(df$Lat)){
+    for (j in seq_along(ex$x_vals)){
+      if (point.in.polygon(df$Lon[i],df$Lat[i],unlist(ex$x_vals[j]),unlist(ex$y_vals[j])) > 0){
+        ex$count[j] <- ex$count[j] + 1
+      }
+    }
+  }
+  return(ex)
+}
+```
+
+And the function `find_pt` takes in many points using this data to determine with polygon they are in.
+
+```{r}
+create_choro <- function(df){
+  ids <- seq_along(df$count)
+  id=c()
+  value=c()
+  for (i in seq_along(df$count)){
+    id <- append(id,rep(ids[i], each=length(unlist(df$x_vals[i]))))
+    value <- append(value,rep(df$count[i], each=length(unlist(df$x_vals[i]))))
+  }
+  xs <- c()
+  ys <- c()
+  for (i in seq_along(df$count)){
+    for (j in seq_along(unlist(df$x_vals[i]))){
+      xs <- append(xs,unlist(df$x_vals[i])[j])
+      ys <- append(ys,unlist(df$y_vals[i])[j])
+    }
+  }
+  data <- data.frame(group=id,Count=value,x=xs,y=ys)
+  nymap <- gen_map(coords)
+  p <- ggmap(nymap) + 
+    xlim(coords[4],coords[3])+ylim(coords[6],coords[5])+
+    geom_polygon(data, mapping=aes(x=x,y=y,fill = Count, group = group), alpha=.70)
+  return(p)
+}
+```
+
+Finally, we use that data using `create_choro` to create a choropleth map of our data
+We took the past 6 months of Uber data from New York City, and we will create diagrams for each of them.
+
+```{r Sep21}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Sep21.csv'))
+data <- slice_sample(df, n=10)
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+coords <- get_coords(get_poly_x(data), get_poly_y(data))
+generate_voronoi(data)
+get_area(data)
+find_pt(get_poly_x(data), get_poly_y(data), slice_sample(df, n=25)) %>% 
+  create_choro()
+```
+
+```{r Oct21}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Oct21.csv'))
+data <- slice_sample(df, n=10)
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+coords <- get_coords(get_poly_x(data), get_poly_y(data))
+generate_voronoi(data)
+get_area(data)
+find_pt(get_poly_x(data), get_poly_y(data), slice_sample(df, n=50)) %>% 
+  create_choro()
+```
+
+```{r Nov21}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Nov21.csv'))
+data <- slice_sample(df, n=10)
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+coords <- get_coords(get_poly_x(data), get_poly_y(data))
+generate_voronoi(data)
+get_area(data)
+find_pt(get_poly_x(data), get_poly_y(data), slice_sample(df, n=5)) %>% 
+  create_choro()
+```
+
+```{r Dec21}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Dec21.csv'))
+data <- slice_sample(df, n=15)
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+coords <- get_coords(get_poly_x(data), get_poly_y(data))
+generate_voronoi(data)
+get_area(data)
+find_pt(get_poly_x(data), get_poly_y(data), slice_sample(df, n=50)) %>% 
+  create_choro()
+```
+
+```{r Jan22}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Jan22.csv'))
+data <- slice_sample(df, n=20)
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+coords <- get_coords(get_poly_x(data), get_poly_y(data))
+generate_voronoi(data)
+get_area(data)
+find_pt(get_poly_x(data), get_poly_y(data), slice_sample(df, n=75)) %>% 
+  create_choro()
+```
+
+```{r Feb22}
+df <- read_csv(here::here('Uber-dataset','uber-raw-data-Feb22.csv'))
+data <- slice_sample(df, n=75)
+tiles <- deldir(data$Lon, data$Lat) %>% 
+    tile.list
+coords <- get_coords(get_poly_x(data), get_poly_y(data))
+generate_voronoi(data)
+get_area(data)
+find_pt(get_poly_x(data), get_poly_y(data), slice_sample(df, n=1000)) %>% 
+  create_choro()
+```
+
