@@ -12,21 +12,57 @@ knitr::opts_chunk$set(echo = TRUE)
 The packages we will use are included below:
 
 ```{r packages, message=FALSE}
-library(tidyverse)
-library(ggvoronoi)
-library(deldir)
-library(ggmap)
-library(sp)
+library(tidyverse) # Used for general graphing
+library(ggvoronoi) # Creates Voronoi diagrams
+library(deldir) # Obtains info on diagrams
+library(ggmap) # Graphs onto a street map of NY
+library(sp) # For heat maps
 ```
 
 The `ggvoronoi` and `deldir` packages are what we will use to create the Voronoi diagrams. The other three packages will be used to plot the diagrams.
 
 For our project we created numerous functions to create our diagrams and plot them.
 
+Our first function, 
+The function `get_area` will return the areas of the Voronoi polygons so that we can compare them.
+
 ```{r}
-get_coords <- function(x_vals,y_vals){
-  xs <- c()
-  ys <- c()
+get_area <- function(df){                          # Takes in data set and finds areas of 
+  areas <- deldir(df$Lon,df$Lat)$summary$dir.area  # voronoi polygons for numerical analysis
+  return(areas)
+}
+```
+
+The following functions are used to easily access coordinates used to make Voronoi polygons
+
+```{r}
+evparse <- function(x){         # A simple function to read a string as code
+  eval(parse(text = paste0(x)))
+}
+
+get_poly_x <- function(df){                  # Obtains the x coordinates of voronoi polygons
+  tiles <- deldir(df$Lon, df$Lat) %>% 
+    tile.list
+  len <- seq_along(tiles)
+  temp_vec <- paste0("tiles$pt.", len, "$x")
+  return(map(temp_vec, evparse))
+}
+
+get_poly_y <- function(df){                  # Obtains the y coordinates of voronoi polygons
+  tiles <- deldir(df$Lon, df$Lat) %>% 
+    tile.list
+  len <- seq_along(tiles)
+  temp_vec <- paste0("tiles$pt.", len, "$y")
+  return(map(temp_vec, evparse))
+} 
+```
+
+The `get_coords` and `gen_map` are both designed to obtain a map or New York city centered on the data
+
+```{r}
+get_coords <- function(x_vals,y_vals){     #Takes in the x and y values 
+  xs <- c()                                #and returns the borders of the 
+  ys <- c()                                #Voronoi diagrams and where it should be centered
   for (i in seq_along(x_vals)){
     for (j in seq_along(unlist(x_vals[i]))){
       xs <- append(xs,unlist(x_vals[i])[j])
@@ -36,12 +72,16 @@ get_coords <- function(x_vals,y_vals){
   return(c((max(xs)+min(xs))/2,(max(ys)+min(ys))/2,max(xs),min(xs),max(ys),min(ys)))
 }
 
-gen_map <- function(coords){
-  return(get_map(location=coords[1:2],maptype='roadmap'))
+gen_map <- function(coords){                              # Use those coordinates to generate the 
+  return(get_map(location=coords[1:2],maptype='roadmap')) # NY map
 }
+```
 
-generate_voronoi <- function(df){
-  df <- df %>% 
+The function `generate_voronoi` will plot a random sample of points into a Voronoi diagram on our map. We used `ggmap` to obtain the map previously
+
+```{r}
+generate_voronoi <- function(df){                        # Plot Voronoi diagram onto
+  df <- df %>%                                           # NY Map
     distinct()
   nymap <- gen_map(coords)
   ggmap(nymap)+
@@ -51,50 +91,12 @@ generate_voronoi <- function(df){
 }
 ```
 
-Our first function, `generate_voronoi` will plot a random sample of points into a Voronoi diagram on our map. We used `ggmap` and a Google API key to obtain the map
+The function `find_pt` takes in many points using this data to determine with polygon they are in.
 
 ```{r}
-get_area <- function(df){
-  areas <- deldir(df$Lon,df$Lat)$summary$dir.area
-  return(areas)
-}
-```
-
-The function `get_area` will return the areas of the Voronoi polygons so that we can compare them.
-
-```{r}
-evparse <- function(x){
-  eval(parse(text = paste0(x)))
-}
-
-get_poly_x <- function(df){
-  tiles <- deldir(df$Lon, df$Lat) %>% 
-    tile.list
-  len <- seq_along(tiles)
-  temp_vec <- paste0("tiles$pt.", len, "$x")
-  return(map(temp_vec, evparse))
-}
-
-tiles <- deldir(data$Lon, data$Lat) %>% 
-    tile.list
-tile$pt.1$pt
-get_poly_x(data)
-
-get_poly_y <- function(df){
-  tiles <- deldir(df$Lon, df$Lat) %>% 
-    tile.list
-  len <- seq_along(tiles)
-  temp_vec <- paste0("tiles$pt.", len, "$y")
-  return(map(temp_vec, evparse))
-} 
-```
-
-These functions are used to easily access coordinates used to make Voronoi polygons
-
-```{r}
-find_pt <- function(xvals,yvals,df){
-  ex <- data.frame()
-  for (i in seq_along(xvals)){
+find_pt <- function(xvals,yvals,df){                       # Determine how many given
+  ex <- data.frame()                                       # points are within certain 
+  for (i in seq_along(xvals)){                             # Voronoi polygons
     frame=data.frame(I(list(xvals[i])),I(list(yvals[i])))
     names(frame) = c("x_vals","y_vals")
     ex <- rbind(ex, frame)
@@ -111,11 +113,11 @@ find_pt <- function(xvals,yvals,df){
 }
 ```
 
-And the function `find_pt` takes in many points using this data to determine with polygon they are in.
+Finally, we use that data using `create_choro` to create a choropleth map of our data
 
 ```{r}
-create_choro <- function(df){
-  ids <- seq_along(df$count)
+create_choro <- function(df){                  # Put data from find_pt() to
+  ids <- seq_along(df$count)                   # a choropleth map
   id=c()
   value=c()
   for (i in seq_along(df$count)){
@@ -139,12 +141,11 @@ create_choro <- function(df){
 }
 ```
 
-Finally, we use that data using `create_choro` to create a choropleth map of our data
-We took the past 6 months of Uber data from New York City, and we will create diagrams for each of them.
+We took the past 6 months of Uber data from New York City, and we will create diagrams for each of them, following the same format for our code for each month.
 
 ```{r Sep21}
 df <- read_csv(here::here('Uber-dataset','uber-raw-data-Sep21.csv'))
-data <- slice_sample(df, n=10)
+data <- slice_sample(df, n=5)
 tiles <- deldir(data$Lon, data$Lat) %>% 
     tile.list
 coords <- get_coords(get_poly_x(data), get_poly_y(data))
